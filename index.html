@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>1st Anniversary</title>
+  <title>Đ ♥ Y – 1st Anniversary</title>
   <style>
-    body {
+    html, body {
       margin: 0;
-      background: black;
       overflow: hidden;
+      background: radial-gradient(ellipse at center, #000010, #000000);
     }
     canvas {
       display: block;
@@ -15,107 +15,163 @@
   </style>
 </head>
 <body>
-<canvas id="heartCanvas"></canvas>
+<canvas id="canvas"></canvas>
 <script>
-  const canvas = document.getElementById("heartCanvas");
-  const ctx = canvas.getContext("2d");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
+let width = canvas.width;
+let height = canvas.height;
+let centerX = width / 2;
+let centerY = height / 2;
 
-  function drawHeart(scale) {
-    ctx.save();
-    ctx.translate(centerX, centerY);
+let phase = "flyIn"; // flyIn -> explode -> stars
 
+const particles = [];
+const stars = [];
+const textPoints = [];
+
+function heartFunc(t) {
+  const x = 16 * Math.pow(Math.sin(t), 3);
+  const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+  return { x: x * 10, y: -y * 10 };
+}
+
+// Tạo các điểm trái tim đích
+const heartTarget = [];
+for (let i = 0; i < 1000; i++) {
+  let t = Math.random() * Math.PI * 2;
+  let { x, y } = heartFunc(t);
+  heartTarget.push({ x: centerX + x, y: centerY + y });
+}
+
+// Tạo các vệt sáng bay vào
+for (let i = 0; i < heartTarget.length; i++) {
+  let target = heartTarget[i];
+  particles.push({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    dx: 0,
+    dy: 0,
+    targetX: target.x,
+    targetY: target.y,
+    size: Math.random() * 2 + 1,
+    reached: false
+  });
+}
+
+let exploded = false;
+let explosionTime = 0;
+
+// Tạo các ngôi sao nền mờ
+for (let i = 0; i < 300; i++) {
+  stars.push({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    size: Math.random() * 1.5 + 0.5,
+    alpha: Math.random() * 0.5 + 0.2
+  });
+}
+
+function drawStars() {
+  for (let s of stars) {
     ctx.beginPath();
-    for (let t = 0; t <= Math.PI * 2; t += 0.01) {
-      const x = scale * 16 * Math.pow(Math.sin(t), 3);
-      const y = -scale * (
-        13 * Math.cos(t) -
-        5 * Math.cos(2 * t) -
-        2 * Math.cos(3 * t) -
-        Math.cos(4 * t)
-      );
-      if (t === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+    ctx.fill();
+  }
+}
+
+function drawTextStars() {
+  ctx.save();
+  ctx.font = "bold 60px Arial";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "white";
+  ctx.shadowColor = "rgba(255,255,255,0.8)";
+  ctx.shadowBlur = 15;
+
+  ctx.globalAlpha = 0.8 + 0.2 * Math.sin(Date.now() / 500);
+  ctx.fillText("Đ ♥ Y", centerX, centerY - 30);
+  ctx.font = "30px Arial";
+  ctx.fillText("1st Anniversary", centerX, centerY + 30);
+  ctx.restore();
+}
+
+function animate() {
+  ctx.fillStyle = "rgba(0,0,10,0.15)";
+  ctx.fillRect(0, 0, width, height);
+
+  drawStars();
+
+  if (phase === "flyIn") {
+    let complete = 0;
+    for (let p of particles) {
+      let dx = (p.targetX - p.x) * 0.05;
+      let dy = (p.targetY - p.y) * 0.05;
+      p.x += dx;
+      p.y += dy;
+
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+        p.reached = true;
+        complete++;
+      }
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,100,150,0.8)";
+      ctx.shadowColor = "#ff66cc";
+      ctx.shadowBlur = 20;
+      ctx.fill();
     }
 
-    // Gradient đỏ giả 3D
-    const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, scale * 16);
-    grad.addColorStop(0, "#ff6b6b");
-    grad.addColorStop(0.6, "#d90429");
-    grad.addColorStop(1, "#5c0000");
+    if (complete > particles.length * 0.95) {
+      phase = "explode";
+      explosionTime = Date.now();
+    }
 
-    ctx.fillStyle = grad;
-    ctx.shadowColor = "#ffaaaa";
-    ctx.shadowBlur = 30;
-    ctx.fill();
-    ctx.restore();
-  }
+  } else if (phase === "explode") {
+    if (!exploded) {
+      for (let p of particles) {
+        p.dx = (Math.random() - 0.5) * 10;
+        p.dy = (Math.random() - 0.5) * 10;
+      }
+      exploded = true;
+    }
 
-  function drawText() {
-    ctx.save();
-    ctx.font = "bold 40px Arial";
-    ctx.fillStyle = "#ffffff";
-    ctx.shadowColor = "#ff66cc";
-    ctx.shadowBlur = 10;
-    ctx.textAlign = "center";
-    ctx.fillText("1st Anniversary", centerX, centerY - 60);
-
-    ctx.font = "bold 60px Arial";
-    ctx.shadowColor = "#ffffff";
-    ctx.shadowBlur = 30;
-    ctx.fillText("Đ ♥ Y", centerX, centerY + 20);
-    ctx.restore();
-  }
-
-  const particles = [];
-  for (let i = 0; i < 100; i++) {
-    particles.push({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      r: Math.random() * 2 + 1,
-      dx: (Math.random() - 0.5) * 0.3,
-      dy: (Math.random() - 0.5) * 0.3,
-      alpha: Math.random()
-    });
-  }
-
-  function drawParticles() {
-    ctx.save();
     for (let p of particles) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
-      ctx.fill();
       p.x += p.dx;
       p.y += p.dy;
-      p.alpha += (Math.random() - 0.5) * 0.05;
-      if (p.alpha < 0.1) p.alpha = 0.1;
-      if (p.alpha > 1) p.alpha = 1;
+      p.size *= 0.98;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,200,200,0.5)";
+      ctx.shadowColor = "#ffcccc";
+      ctx.shadowBlur = 10;
+      ctx.fill();
     }
-    ctx.restore();
+
+    if (Date.now() - explosionTime > 2000) {
+      phase = "stars";
+    }
+
+  } else if (phase === "stars") {
+    drawTextStars();
   }
 
-  function animate() {
-    ctx.fillStyle = "rgba(0,0,0,0.1)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  requestAnimationFrame(animate);
+}
 
-    drawHeart(10);
-    drawText();
-    drawParticles();
+animate();
 
-    requestAnimationFrame(animate);
-  }
-
-  animate();
-
-  window.addEventListener("resize", () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  });
+window.addEventListener("resize", () => {
+  canvas.width = width = window.innerWidth;
+  canvas.height = height = window.innerHeight;
+  centerX = width / 2;
+  centerY = height / 2;
+});
 </script>
 </body>
 </html>
