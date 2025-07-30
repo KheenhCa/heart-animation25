@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Đ ♥ Y – 1st Anniversary</title>
+  <meta charset="UTF-8">
+  <title>Đ ♥ Y - 1st Anniversary</title>
   <style>
     body {
       margin: 0;
@@ -15,155 +15,137 @@
   </style>
 </head>
 <body>
-<canvas id="heartCanvas"></canvas>
+<canvas id="canvas"></canvas>
 <script>
-const canvas = document.getElementById("heartCanvas");
+const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+let particles = [];
+let heartShape = [];
+let stars = [];
+let phase = 'scatter';
+let timeStart = Date.now();
+
 const centerX = canvas.width / 2;
 const centerY = canvas.height / 2;
-const heartPoints = [];
-const particles = [];
-const backgroundStars = [];
 
-let phase = 'gather'; // 'gather' -> 'explode' -> 'final'
-let phaseStartTime = Date.now();
-
-// Tạo hình trái tim
+// Generate heart shape points
 function generateHeartPoints() {
   const scale = 10;
-  for (let t = 0; t < Math.PI * 2; t += 0.03) {
-    const x = scale * 16 * Math.pow(Math.sin(t), 3);
-    const y = -scale * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
-    heartPoints.push({ x, y });
+  for (let t = 0; t < Math.PI * 2; t += 0.02) {
+    let x = scale * 16 * Math.pow(Math.sin(t), 3);
+    let y = -scale * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+    heartShape.push({ x: centerX + x, y: centerY + y });
   }
 }
 
-generateHeartPoints();
-
-// Tạo sao nền mờ
-for (let i = 0; i < 200; i++) {
-  backgroundStars.push({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    size: Math.random() * 1.5 + 0.5,
-    alpha: Math.random() * 0.3 + 0.1
-  });
-}
-
-// Particle class
-class Particle {
-  constructor() {
-    this.reset();
-  }
-
-  reset() {
-    const target = heartPoints[Math.floor(Math.random() * heartPoints.length)];
-    this.tx = centerX + target.x;
-    this.ty = centerY + target.y;
-    this.x = Math.random() * canvas.width;
-    this.y = Math.random() * canvas.height;
-    this.size = Math.random() * 2 + 1;
-    this.speed = Math.random() * 0.05 + 0.015;
-    this.color = `rgba(255, ${Math.floor(Math.random()*100 + 50)}, ${Math.floor(Math.random()*100 + 100)}, 1)`;
-    this.vx = 0;
-    this.vy = 0;
-  }
-
-  update() {
-    if (phase === 'gather') {
-      this.x += (this.tx - this.x) * this.speed;
-      this.y += (this.ty - this.y) * this.speed;
-    } else if (phase === 'explode') {
-      this.x += this.vx;
-      this.y += this.vy;
-      this.vx *= 0.98;
-      this.vy *= 0.98;
-    }
-  }
-
-  draw() {
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fillStyle = this.color;
-    ctx.shadowColor = "#ff99cc";
-    ctx.shadowBlur = 15;
-    ctx.fill();
+// Create cinematic particles
+function createParticles(count) {
+  for (let i = 0; i < count; i++) {
+    let angle = Math.random() * 2 * Math.PI;
+    let radius = Math.random() * canvas.width / 2;
+    particles.push({
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
+      tx: 0, ty: 0,
+      size: Math.random() * 2 + 1,
+      speed: Math.random() * 0.02 + 0.01,
+      color: `hsl(${Math.random() * 360}, 80%, 60%)`
+    });
   }
 }
 
-for (let i = 0; i < 1000; i++) {
-  particles.push(new Particle());
+function explodeParticles() {
+  for (let p of particles) {
+    p.vx = (Math.random() - 0.5) * 10;
+    p.vy = (Math.random() - 0.5) * 10;
+  }
 }
 
-// Vẽ sao nền
+function scatterStars() {
+  for (let i = 0; i < 300; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      size: Math.random() * 2,
+      opacity: Math.random() * 0.5
+    });
+  }
+}
+
 function drawBackgroundStars() {
-  for (let s of backgroundStars) {
+  for (let s of stars) {
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+    ctx.fillStyle = `rgba(255, 255, 255, ${s.opacity})`;
     ctx.fill();
   }
-}
-
-// Viết chữ bằng hiệu ứng nhấp nháy
-function drawText() {
-  ctx.save();
-  ctx.font = "bold 60px Arial";
-  ctx.textAlign = "center";
-  ctx.fillStyle = `rgba(255,255,255,${0.6 + 0.4 * Math.sin(Date.now() / 300)})`;
-  ctx.shadowColor = "#ffffff";
-  ctx.shadowBlur = 20;
-  ctx.fillText("Đ ♥ Y", centerX, centerY - 40);
-  ctx.font = "30px Arial";
-  ctx.fillText("1st Anniversary", centerX, centerY + 30);
-  ctx.restore();
 }
 
 function animate() {
   ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   drawBackgroundStars();
 
-  for (let p of particles) {
-    p.update();
-    p.draw();
+  const elapsed = Date.now() - timeStart;
+
+  if (phase === 'scatter' && elapsed > 4000) {
+    phase = 'form';
+    particles.forEach((p, i) => {
+      let t = heartShape[i % heartShape.length];
+      p.tx = t.x;
+      p.ty = t.y;
+    });
   }
 
-  const now = Date.now();
-  const elapsed = now - phaseStartTime;
-
-  if (phase === 'gather' && elapsed > 4000) {
-    // Sang pha nổ
-    for (let p of particles) {
-      p.vx = (Math.random() - 0.5) * 10;
-      p.vy = (Math.random() - 0.5) * 10;
-    }
+  if (phase === 'form' && elapsed > 8000) {
     phase = 'explode';
-    phaseStartTime = now;
+    explodeParticles();
   }
 
-  if (phase === 'explode' && elapsed > 2000) {
+  if (phase === 'explode' && elapsed > 11000) {
     phase = 'final';
-    phaseStartTime = now;
+    scatterStars();
   }
+
+  particles.forEach((p) => {
+    if (phase === 'form') {
+      p.x += (p.tx - p.x) * p.speed;
+      p.y += (p.ty - p.y) * p.speed;
+    } else if (phase === 'explode') {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.95;
+      p.vy *= 0.95;
+    }
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = p.color;
+    ctx.fill();
+  });
 
   if (phase === 'final') {
-    drawText();
+    ctx.font = 'bold 50px Arial';
+    ctx.fillStyle = `rgba(255,255,255,${0.8 + 0.2 * Math.sin(Date.now() / 300)})`;
+    ctx.textAlign = 'center';
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = 'white';
+    ctx.fillText('Đ ♥ Y', centerX, centerY - 20);
+    ctx.font = '28px Arial';
+    ctx.fillText('1st Anniversary', centerX, centerY + 30);
   }
 
   requestAnimationFrame(animate);
 }
 
+generateHeartPoints();
+createParticles(1200);
 animate();
-
-window.addEventListener("resize", () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
 </script>
 </body>
 </html>
