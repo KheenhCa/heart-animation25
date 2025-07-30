@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Heart Particle Animation</title>
+  <title>1st Anniversary</title>
   <style>
     body {
       margin: 0;
@@ -22,12 +22,15 @@
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  const particles = [];
-  const heartPoints = [];
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
 
-  function generateHeartPoints() {
-    const scale = 10;
-    for (let t = 0; t < Math.PI * 2; t += 0.05) {
+  function drawHeart(scale) {
+    ctx.save();
+    ctx.translate(centerX, centerY);
+
+    ctx.beginPath();
+    for (let t = 0; t <= Math.PI * 2; t += 0.01) {
       const x = scale * 16 * Math.pow(Math.sin(t), 3);
       const y = -scale * (
         13 * Math.cos(t) -
@@ -35,56 +38,74 @@
         2 * Math.cos(3 * t) -
         Math.cos(4 * t)
       );
-      heartPoints.push({ x, y });
+      if (t === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     }
+
+    // Gradient đỏ giả 3D
+    const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, scale * 16);
+    grad.addColorStop(0, "#ff6b6b");
+    grad.addColorStop(0.6, "#d90429");
+    grad.addColorStop(1, "#5c0000");
+
+    ctx.fillStyle = grad;
+    ctx.shadowColor = "#ffaaaa";
+    ctx.shadowBlur = 30;
+    ctx.fill();
+    ctx.restore();
   }
 
-  generateHeartPoints();
+  function drawText() {
+    ctx.save();
+    ctx.font = "bold 40px Arial";
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "#ff66cc";
+    ctx.shadowBlur = 10;
+    ctx.textAlign = "center";
+    ctx.fillText("1st Anniversary", centerX, centerY - 60);
 
-  class Particle {
-    constructor() {
-      this.reset();
-    }
+    ctx.font = "bold 60px Arial";
+    ctx.shadowColor = "#ffffff";
+    ctx.shadowBlur = 30;
+    ctx.fillText("Đ ♥ Y", centerX, centerY + 20);
+    ctx.restore();
+  }
 
-    reset() {
-      const target = heartPoints[Math.floor(Math.random() * heartPoints.length)];
-      this.tx = canvas.width / 2 + target.x;
-      this.ty = canvas.height / 2 + target.y;
-      this.x = Math.random() * canvas.width;
-      this.y = Math.random() * canvas.height;
-      this.size = Math.random() * 2 + 1;
-      this.speed = Math.random() * 0.05 + 0.015;
-      this.color = `rgba(255, ${Math.floor(Math.random()*100 + 50)}, ${Math.floor(Math.random()*100 + 100)}, 1)`;
-    }
+  const particles = [];
+  for (let i = 0; i < 100; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 2 + 1,
+      dx: (Math.random() - 0.5) * 0.3,
+      dy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random()
+    });
+  }
 
-    update() {
-      this.x += (this.tx - this.x) * this.speed;
-      this.y += (this.ty - this.y) * this.speed;
-      const dx = this.tx - this.x;
-      const dy = this.ty - this.y;
-      if (Math.sqrt(dx * dx + dy * dy) < 1) this.reset();
-    }
-
-    draw() {
+  function drawParticles() {
+    ctx.save();
+    for (let p of particles) {
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fillStyle = this.color;
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
       ctx.fill();
+      p.x += p.dx;
+      p.y += p.dy;
+      p.alpha += (Math.random() - 0.5) * 0.05;
+      if (p.alpha < 0.1) p.alpha = 0.1;
+      if (p.alpha > 1) p.alpha = 1;
     }
-  }
-
-  for (let i = 0; i < 1000; i++) {
-    particles.push(new Particle());
+    ctx.restore();
   }
 
   function animate() {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+    ctx.fillStyle = "rgba(0,0,0,0.1)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    for (let p of particles) {
-      p.update();
-      p.draw();
-    }
+    drawHeart(10);
+    drawText();
+    drawParticles();
 
     requestAnimationFrame(animate);
   }
