@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <title>Đ ♥ Y – 1st Anniversary</title>
   <style>
-    html, body {
+    body {
       margin: 0;
+      background: black;
       overflow: hidden;
-      background: radial-gradient(ellipse at center, #000010, #000000);
     }
     canvas {
       display: block;
@@ -15,68 +15,92 @@
   </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
+<canvas id="heartCanvas"></canvas>
 <script>
-const canvas = document.getElementById("canvas");
+const canvas = document.getElementById("heartCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-let width = canvas.width;
-let height = canvas.height;
-let centerX = width / 2;
-let centerY = height / 2;
-
-let phase = "flyIn"; // flyIn -> explode -> stars
-
+const centerX = canvas.width / 2;
+const centerY = canvas.height / 2;
+const heartPoints = [];
 const particles = [];
-const stars = [];
-const textPoints = [];
+const backgroundStars = [];
 
-function heartFunc(t) {
-  const x = 16 * Math.pow(Math.sin(t), 3);
-  const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
-  return { x: x * 10, y: -y * 10 };
+let phase = 'gather'; // 'gather' -> 'explode' -> 'final'
+let phaseStartTime = Date.now();
+
+// Tạo hình trái tim
+function generateHeartPoints() {
+  const scale = 10;
+  for (let t = 0; t < Math.PI * 2; t += 0.03) {
+    const x = scale * 16 * Math.pow(Math.sin(t), 3);
+    const y = -scale * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+    heartPoints.push({ x, y });
+  }
 }
 
-// Tạo các điểm trái tim đích
-const heartTarget = [];
-for (let i = 0; i < 1000; i++) {
-  let t = Math.random() * Math.PI * 2;
-  let { x, y } = heartFunc(t);
-  heartTarget.push({ x: centerX + x, y: centerY + y });
-}
+generateHeartPoints();
 
-// Tạo các vệt sáng bay vào
-for (let i = 0; i < heartTarget.length; i++) {
-  let target = heartTarget[i];
-  particles.push({
-    x: Math.random() * width,
-    y: Math.random() * height,
-    dx: 0,
-    dy: 0,
-    targetX: target.x,
-    targetY: target.y,
-    size: Math.random() * 2 + 1,
-    reached: false
-  });
-}
-
-let exploded = false;
-let explosionTime = 0;
-
-// Tạo các ngôi sao nền mờ
-for (let i = 0; i < 300; i++) {
-  stars.push({
-    x: Math.random() * width,
-    y: Math.random() * height,
+// Tạo sao nền mờ
+for (let i = 0; i < 200; i++) {
+  backgroundStars.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
     size: Math.random() * 1.5 + 0.5,
-    alpha: Math.random() * 0.5 + 0.2
+    alpha: Math.random() * 0.3 + 0.1
   });
 }
 
-function drawStars() {
-  for (let s of stars) {
+// Particle class
+class Particle {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    const target = heartPoints[Math.floor(Math.random() * heartPoints.length)];
+    this.tx = centerX + target.x;
+    this.ty = centerY + target.y;
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.size = Math.random() * 2 + 1;
+    this.speed = Math.random() * 0.05 + 0.015;
+    this.color = `rgba(255, ${Math.floor(Math.random()*100 + 50)}, ${Math.floor(Math.random()*100 + 100)}, 1)`;
+    this.vx = 0;
+    this.vy = 0;
+  }
+
+  update() {
+    if (phase === 'gather') {
+      this.x += (this.tx - this.x) * this.speed;
+      this.y += (this.ty - this.y) * this.speed;
+    } else if (phase === 'explode') {
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vx *= 0.98;
+      this.vy *= 0.98;
+    }
+  }
+
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = "#ff99cc";
+    ctx.shadowBlur = 15;
+    ctx.fill();
+  }
+}
+
+for (let i = 0; i < 1000; i++) {
+  particles.push(new Particle());
+}
+
+// Vẽ sao nền
+function drawBackgroundStars() {
+  for (let s of backgroundStars) {
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
@@ -84,81 +108,51 @@ function drawStars() {
   }
 }
 
-function drawTextStars() {
+// Viết chữ bằng hiệu ứng nhấp nháy
+function drawText() {
   ctx.save();
   ctx.font = "bold 60px Arial";
   ctx.textAlign = "center";
-  ctx.fillStyle = "white";
-  ctx.shadowColor = "rgba(255,255,255,0.8)";
-  ctx.shadowBlur = 15;
-
-  ctx.globalAlpha = 0.8 + 0.2 * Math.sin(Date.now() / 500);
-  ctx.fillText("Đ ♥ Y", centerX, centerY - 30);
+  ctx.fillStyle = `rgba(255,255,255,${0.6 + 0.4 * Math.sin(Date.now() / 300)})`;
+  ctx.shadowColor = "#ffffff";
+  ctx.shadowBlur = 20;
+  ctx.fillText("Đ ♥ Y", centerX, centerY - 40);
   ctx.font = "30px Arial";
   ctx.fillText("1st Anniversary", centerX, centerY + 30);
   ctx.restore();
 }
 
 function animate() {
-  ctx.fillStyle = "rgba(0,0,10,0.15)";
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  drawStars();
+  drawBackgroundStars();
 
-  if (phase === "flyIn") {
-    let complete = 0;
+  for (let p of particles) {
+    p.update();
+    p.draw();
+  }
+
+  const now = Date.now();
+  const elapsed = now - phaseStartTime;
+
+  if (phase === 'gather' && elapsed > 4000) {
+    // Sang pha nổ
     for (let p of particles) {
-      let dx = (p.targetX - p.x) * 0.05;
-      let dy = (p.targetY - p.y) * 0.05;
-      p.x += dx;
-      p.y += dy;
-
-      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
-        p.reached = true;
-        complete++;
-      }
-
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,100,150,0.8)";
-      ctx.shadowColor = "#ff66cc";
-      ctx.shadowBlur = 20;
-      ctx.fill();
+      p.vx = (Math.random() - 0.5) * 10;
+      p.vy = (Math.random() - 0.5) * 10;
     }
+    phase = 'explode';
+    phaseStartTime = now;
+  }
 
-    if (complete > particles.length * 0.95) {
-      phase = "explode";
-      explosionTime = Date.now();
-    }
+  if (phase === 'explode' && elapsed > 2000) {
+    phase = 'final';
+    phaseStartTime = now;
+  }
 
-  } else if (phase === "explode") {
-    if (!exploded) {
-      for (let p of particles) {
-        p.dx = (Math.random() - 0.5) * 10;
-        p.dy = (Math.random() - 0.5) * 10;
-      }
-      exploded = true;
-    }
-
-    for (let p of particles) {
-      p.x += p.dx;
-      p.y += p.dy;
-      p.size *= 0.98;
-
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,200,200,0.5)";
-      ctx.shadowColor = "#ffcccc";
-      ctx.shadowBlur = 10;
-      ctx.fill();
-    }
-
-    if (Date.now() - explosionTime > 2000) {
-      phase = "stars";
-    }
-
-  } else if (phase === "stars") {
-    drawTextStars();
+  if (phase === 'final') {
+    drawText();
   }
 
   requestAnimationFrame(animate);
@@ -167,10 +161,8 @@ function animate() {
 animate();
 
 window.addEventListener("resize", () => {
-  canvas.width = width = window.innerWidth;
-  canvas.height = height = window.innerHeight;
-  centerX = width / 2;
-  centerY = height / 2;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 });
 </script>
 </body>
