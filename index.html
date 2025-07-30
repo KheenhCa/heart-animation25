@@ -23,128 +23,104 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 let particles = [];
-let heartShape = [];
-let stars = [];
-let phase = 'scatter';
-let timeStart = Date.now();
+let heartPoints = [];
+let textPoints = [];
 
 const centerX = canvas.width / 2;
 const centerY = canvas.height / 2;
 
 function generateHeartPoints() {
-  const scale = 18; // Bigger heart
-  for (let t = 0; t < Math.PI * 2; t += 0.015) {
+  const scale = 18;
+  for (let t = 0; t < Math.PI * 2; t += 0.02) {
     let x = scale * 16 * Math.pow(Math.sin(t), 3);
     let y = -scale * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
-    heartShape.push({ x: centerX + x, y: centerY + y });
+    heartPoints.push({ x: centerX + x, y: centerY + y });
   }
+}
+
+function getTextPoints(text, fontSize, offsetY = 0) {
+  const offscreen = document.createElement('canvas');
+  const ctx2 = offscreen.getContext('2d');
+  offscreen.width = canvas.width;
+  offscreen.height = canvas.height;
+  ctx2.font = `${fontSize}px Arial`;
+  ctx2.fillStyle = 'white';
+  ctx2.textAlign = 'center';
+  ctx2.fillText(text, centerX, centerY + offsetY);
+  const data = ctx2.getImageData(0, 0, canvas.width, canvas.height);
+  let points = [];
+  for (let y = 0; y < data.height; y += 6) {
+    for (let x = 0; x < data.width; x += 6) {
+      const index = (y * data.width + x) * 4;
+      if (data.data[index + 3] > 150) {
+        points.push({ x, y });
+      }
+    }
+  }
+  return points;
 }
 
 function createParticles(count) {
   for (let i = 0; i < count; i++) {
     let angle = Math.random() * 2 * Math.PI;
-    let radius = Math.random() * canvas.width * 0.75;
+    let radius = Math.random() * canvas.width * 0.8;
     particles.push({
       x: centerX + radius * Math.cos(angle),
       y: centerY + radius * Math.sin(angle),
       tx: 0, ty: 0,
       size: Math.random() * 2 + 1,
-      speed: Math.random() * 0.015 + 0.005,
-      color: `hsl(${Math.random() * 360}, 100%, 70%)`
+      speed: Math.random() * 0.02 + 0.01,
+      color: `hsl(${Math.random() * 360}, 100%, 70%)`,
+      phase: 'heart',
+      alpha: 1
     });
-  }
-}
-
-function explodeParticles() {
-  for (let p of particles) {
-    p.vx = (Math.random() - 0.5) * 20;
-    p.vy = (Math.random() - 0.5) * 20;
-  }
-}
-
-function scatterStars() {
-  for (let i = 0; i < 300; i++) {
-    stars.push({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      size: Math.random() * 2,
-      opacity: Math.random() * 0.4
-    });
-  }
-}
-
-function drawBackgroundStars() {
-  for (let s of stars) {
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 255, 255, ${s.opacity})`;
-    ctx.fill();
   }
 }
 
 function animate() {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  drawBackgroundStars();
 
-  const elapsed = Date.now() - timeStart;
-
-  if (phase === 'scatter' && elapsed > 7000) {
-    phase = 'form';
-    particles.forEach((p, i) => {
-      let t = heartShape[i % heartShape.length];
-      p.tx = t.x;
-      p.ty = t.y;
-    });
-  }
-
-  if (phase === 'form' && elapsed > 13000) {
-    phase = 'explode';
-    explodeParticles();
-  }
-
-  if (phase === 'explode' && elapsed > 16000) {
-    phase = 'final';
-    scatterStars();
-  }
-
-  particles.forEach((p) => {
-    if (phase === 'form') {
-      p.x += (p.tx - p.x) * p.speed;
-      p.y += (p.ty - p.y) * p.speed;
-    } else if (phase === 'explode') {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vx *= 0.96;
-      p.vy *= 0.96;
+  for (let p of particles) {
+    if (p.phase === 'heart') {
+      let target = heartPoints[Math.floor(Math.random() * heartPoints.length)];
+      p.tx = target.x;
+      p.ty = target.y;
+    } else if (p.phase === 'text') {
+      let target = textPoints[Math.floor(Math.random() * textPoints.length)];
+      p.tx = target.x;
+      p.ty = target.y;
     }
+
+    p.x += (p.tx - p.x) * p.speed;
+    p.y += (p.ty - p.y) * p.speed;
 
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fillStyle = p.color;
-    ctx.shadowBlur = 25;
+    ctx.fillStyle = `rgba(255, 180, 255, ${p.alpha})`;
+    ctx.shadowBlur = 15;
     ctx.shadowColor = p.color;
     ctx.fill();
-  });
-
-  if (phase === 'final') {
-    const flicker = 0.4 + 0.6 * Math.abs(Math.sin(Date.now() / 300));
-    ctx.font = 'bold 56px Arial';
-    ctx.fillStyle = `rgba(255,255,255,${flicker})`;
-    ctx.textAlign = 'center';
-    ctx.shadowBlur = 30;
-    ctx.shadowColor = 'white';
-    ctx.fillText('Đ ♥ Y', centerX, centerY - 30);
-    ctx.font = '28px Arial';
-    ctx.fillStyle = `rgba(255,255,255,${0.3 + 0.2 * Math.sin(Date.now() / 200)})`;
-    ctx.fillText('1st Anniversary', centerX, centerY + 30);
   }
 
   requestAnimationFrame(animate);
 }
 
+function transitionToText() {
+  for (let p of particles) {
+    p.phase = 'text';
+    p.alpha = 0.6;
+  }
+}
+
 generateHeartPoints();
-createParticles(1600);
+createParticles(1800);
+
+setTimeout(() => {
+  textPoints = getTextPoints("Đ ♥ Y", 80, -30).concat(getTextPoints("1st Anniversary", 40, 40));
+  transitionToText();
+}, 10000);
+
 animate();
 </script>
 </body>
