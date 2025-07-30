@@ -1,134 +1,132 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Đ ♥ Y - 1st Anniversary</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: radial-gradient(ellipse at center, #1a0028 0%, #000000 100%);
-    }
-    canvas {
-      display: block;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Heart Explosion Animation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: #1a0033; }
+        canvas { display: block; }
+    </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
-<script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+    <script>
+        let particles = [];
+        let heartFormed = false;
+        let explosion = false;
+        let textAlpha = 0;
+        let textShown = false;
 
-const centerX = canvas.width / 2;
-const centerY = canvas.height / 2;
-const particles = [];
-let heartPoints = [];
-let textPoints = [];
-let explosion = false;
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            colorMode(HSB, 360, 100, 100, 1);
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle(random(width), random(height)));
+            }
+        }
 
-function generateHeartPoints() {
-  const scale = 16;
-  for (let t = 0; t < Math.PI * 2; t += 0.01) {
-    let x = scale * 16 * Math.pow(Math.sin(t), 3);
-    let y = -scale * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
-    heartPoints.push({ x: centerX + x * 5, y: centerY + y * 5 });
-  }
-}
+        function draw() {
+            background(270, 80, 20, 0.1);
 
-function getTextPoints(text, fontSize, offsetY = 0) {
-  const offscreen = document.createElement("canvas");
-  const ctx2 = offscreen.getContext("2d");
-  offscreen.width = canvas.width;
-  offscreen.height = canvas.height;
-  ctx2.font = `bold ${fontSize}px Arial`;
-  ctx2.fillStyle = "white";
-  ctx2.textAlign = "center";
-  ctx2.fillText(text, centerX, centerY + offsetY);
-  const data = ctx2.getImageData(0, 0, canvas.width, canvas.height);
-  let points = [];
-  for (let y = 0; y < data.height; y += 5) {
-    for (let x = 0; x < data.width; x += 5) {
-      const index = (y * data.width + x) * 4;
-      if (data.data[index + 3] > 128) {
-        points.push({ x, y });
-      }
-    }
-  }
-  return points;
-}
+            if (!heartFormed) {
+                for (let particle of particles) {
+                    particle.update();
+                    particle.show();
+                }
+                checkHeartFormation();
+            } else if (!explosion) {
+                drawHeart();
+                if (frameCount % 60 === 0) {
+                    explosion = true;
+                }
+            } else {
+                for (let particle of particles) {
+                    particle.explode();
+                    particle.show();
+                }
+                if (!textShown && frameCount % 30 === 0) {
+                    textShown = true;
+                }
+                drawText();
+            }
+        }
 
-function createParticles(count) {
-  for (let i = 0; i < count; i++) {
-    let angle = Math.random() * 2 * Math.PI;
-    let radius = canvas.width * 0.8 * Math.random();
-    particles.push({
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle),
-      tx: 0,
-      ty: 0,
-      size: Math.random() * 2 + 1,
-      speed: Math.random() * 0.01 + 0.003,
-      phase: 'heart',
-      trail: [],
-      color: `hsl(${Math.random() * 360}, 100%, 70%)`
-    });
-  }
-}
+        function checkHeartFormation() {
+            let centerX = width / 2;
+            let centerY = height / 2;
+            let inHeart = particles.filter(p => {
+                let d = dist(p.x, p.y, centerX, centerY);
+                return d < 100 && p.life > 200;
+            });
+            if (inHeart.length > 80) {
+                heartFormed = true;
+                for (let particle of particles) {
+                    particle.targetX = centerX + 100 * sin(particle.angle);
+                    particle.targetY = centerY + 100 * cos(particle.angle) * (1 - abs(sin(particle.angle)));
+                }
+            }
+        }
 
-function animate() {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function drawHeart() {
+            noFill();
+            stroke(0, 80, 100, 0.8);
+            strokeWeight(2);
+            beginShape();
+            let x, y;
+            for (let a = 0; a < TWO_PI * 2; a += 0.1) {
+                x = width / 2 + 100 * 16 * pow(sin(a), 3);
+                y = height / 2 - 100 * (13 * cos(a) - 5 * cos(2 * a) - 2 * cos(3 * a) - cos(4 * a));
+                vertex(x, y);
+            }
+            endShape(CLOSE);
+        }
 
-  particles.forEach(p => {
-    if (p.phase === 'heart') {
-      const target = heartPoints[Math.floor(Math.random() * heartPoints.length)];
-      p.tx = target.x;
-      p.ty = target.y;
-    } else if (p.phase === 'text') {
-      const target = textPoints[Math.floor(Math.random() * textPoints.length)];
-      p.tx = target.x;
-      p.ty = target.y;
-    }
+        function drawText() {
+            textAlign(CENTER, CENTER);
+            textSize(50);
+            fill(60, 80, 100, textAlpha);
+            textAlpha = min(textAlpha + 0.05, 1);
+            text('Đ ♥ Y 1st Anniversary', width / 2, height / 2);
+        }
 
-    let dx = p.tx - p.x;
-    let dy = p.ty - p.y;
-    p.x += dx * p.speed;
-    p.y += dy * p.speed;
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = random(-2, 2);
+                this.vy = random(-2, 2);
+                this.angle = random(TWO_PI);
+                this.life = 255;
+                this.color = color(random(300, 340), 80, 100);
+            }
 
-    p.trail.push({ x: p.x, y: p.y });
-    if (p.trail.length > 10) p.trail.shift();
+            update() {
+                if (!heartFormed) {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.life -= 2;
+                } else {
+                    this.x = lerp(this.x, this.targetX, 0.05);
+                    this.y = lerp(this.y, this.targetY, 0.05);
+                }
+            }
 
-    for (let i = 0; i < p.trail.length; i++) {
-      const t = p.trail[i];
-      ctx.beginPath();
-      ctx.arc(t.x, t.y, p.size * (i / p.trail.length), 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, ${200 - i * 20}, 255, ${(i + 1) / p.trail.length * 0.5})`;
-      ctx.fill();
-    }
-  });
+            explode() {
+                this.x += random(-5, 5);
+                this.y += random(-5, 5);
+                this.life -= 5;
+            }
 
-  requestAnimationFrame(animate);
-}
+            show() {
+                noStroke();
+                fill(this.color, this.life);
+                ellipse(this.x, this.y, 10, 10);
+            }
+        }
 
-function explodeToText() {
-  explosion = true;
-  textPoints = getTextPoints("Đ ♥ Y", 90, -40).concat(getTextPoints("1st Anniversary", 40, 40));
-  particles.forEach(p => {
-    p.phase = 'text';
-    p.speed = 0.05;
-  });
-}
-
-generateHeartPoints();
-createParticles(1800);
-
-setTimeout(explodeToText, 10000);
-
-animate();
-</script>
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
 </body>
 </html>
